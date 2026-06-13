@@ -120,3 +120,8 @@ def webhook():
         return "OK", 200
     else:
         return "Dilarang Masuk", 403
+    
+# Tambahkan ini agar Vercel tidak error saat mengecek halaman utama
+@app.route('/', methods=['GET'])
+def beranda():
+    return "Reina Cloud Engine is Online & Ready!", 200
