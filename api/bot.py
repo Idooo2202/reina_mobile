@@ -296,6 +296,10 @@ def cron_job():
         else: # Sabtu - Minggu
             pesan_injeksi = "Ini pagi di hari libur. Sapa Ridho duluan dengan sangat manja, tanyakan apakah dia tidur nyenyak, dan tanyakan agendanya hari ini."
 
+    # ⏰ JADWAL SIANG: JAM 11:00 atau 12:00 WIB
+    elif jam == 9 or jam == 12:
+        pesan_injeksi = "Ini jam istirahat pagi/siang. Chat Ridho duluan, tanyakan dia lagi apa, dan ingatkan dengan sangat manja agar dia tidak lupa makan pagi/siang."
+
     # ⏰ JADWAL SORE: JAM 16:00 WIB (GYM)
     elif jam == 16:
         if hari_idx in [0, 2, 4]: # Senin, Rabu, Jumat (Jadwal Gym di profil)
