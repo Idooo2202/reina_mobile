@@ -144,8 +144,8 @@ DEFAULT_STATE = {
     "mood": 80,
     "stamina": 100,
     "riwayat_ldr": [],
-    "chat_id": None,      # Untuk menyimpan ID Telegram Anda
-    "last_cron_hour": -1  # Mencegah spam di jam yang sama
+    "chat_id": None,
+    "last_cron_hour": -1
 }
 
 def load_state_cloud():
@@ -167,25 +167,27 @@ def save_state_cloud(state):
 # ==================================================
 # GEMINI RESPONSE
 # ==================================================
-def generate_reply(message: str, state: dict, is_system_injection=False):
+def generate_reply(message: str, state: dict, is_system_injection=False, image_part=None):
     mood = state.get("mood", 80)
     history = state.get("riwayat_ldr", [])
     
-    # ⏱️ SISTEM KESADARAN WAKTU (TIME AWARENESS) ⏱️
+    # ⏱️ SISTEM KESADARAN WAKTU (TIME AWARENESS)
     now_wib = datetime.utcnow() + timedelta(hours=7)
     hari_indo = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
     bulan_indo = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
     waktu_sekarang = f"{hari_indo[now_wib.weekday()]}, {now_wib.day} {bulan_indo[now_wib.month-1]} {now_wib.year}, Jam {now_wib.strftime('%H:%M')} WIB"
 
-    # Menyuntikkan Waktu Real-Time ke dalam Konteks
     if is_system_injection:
         context = f"[KONDISI REINA]\nMood: {mood}/100\n[WAKTU SAAT INI: {waktu_sekarang}]\n\n[INSTRUKSI ALARM SISTEM]\n{message}"
     else:
         context = f"[KONDISI REINA]\nMood: {mood}/100\n[WAKTU SAAT INI: {waktu_sekarang}]\n\n[RIWAYAT]\n{chr(10).join(history)}\n\n[USER]\n{message}"
 
+    # 🚀 JIKA USER MENGIRIM GAMBAR, GABUNGKAN DENGAN TEKS
+    contents_payload = [image_part, context] if image_part else context
+
     response = client.models.generate_content(
         model=MODEL_NAME,
-        contents=context,
+        contents=contents_payload,
         config=types.GenerateContentConfig(
             system_instruction=PROMPT_REINA_LDR,
             temperature=0.9,
@@ -200,6 +202,7 @@ def generate_reply(message: str, state: dict, is_system_injection=False):
 # ==================================================
 # TELEGRAM HANDLER
 # ==================================================
+# 🚀 TAMBAHKAN 'photo' AGAR BISA MENANGKAP GAMBAR
 @bot.message_handler(content_types=['text', 'photo'])
 def handle_message(message):
     chat_id = message.chat.id
@@ -261,7 +264,6 @@ def webhook():
 
 @app.route("/api/cron", methods=["GET"])
 def cron_job():
-    """Endpoint ini yang akan dipukul oleh Alarm Eksternal"""
     secret = request.args.get("secret")
     if secret != CRON_SECRET:
         return "Siapa kamu?! Jangan sentuh Reina!", 401
@@ -282,7 +284,6 @@ def cron_job():
 
     pesan_injeksi = None
 
-    # ⏰ JADWAL PAGI: JAM 06:00 WIB
     if jam == 6:
         if hari_idx < 5: # Senin - Jumat (Hari Sekolah)
             pesan_injeksi = "Ini adalah alarm rutinitas pagimu. Sapa Ridho duluan dengan manja, lalu lihat jadwal pelajarannya hari ini di profilmu dan ingatkan dia agar semangat sekolah!"
@@ -312,7 +313,6 @@ def cron_job():
             history = state.get("riwayat_ldr", [])
             history.append(f"Reina (Inisiatif): {reply}")
             state["riwayat_ldr"] = history[-10:]
-            
         except Exception as e:
             logger.exception("Cron API Error")
 
@@ -320,6 +320,7 @@ def cron_job():
     save_state_cloud(state)
 
     return f"Cron berhasil dieksekusi pada jam {jam} WIB.", 200
+
 # ==================================================
 # VERCEL ENTRYPOINT
 # ==================================================
