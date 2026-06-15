@@ -1,6 +1,8 @@
 import os
 import json
 import logging
+import io
+from PIL import Image
 from flask import Flask, request
 import telebot
 from datetime import datetime, timedelta
