@@ -225,18 +225,36 @@ def generate_reply(message: str, state: dict, is_system_injection=False):
 # ==================================================
 # TELEGRAM HANDLER
 # ==================================================
-@bot.message_handler(func=lambda msg: bool(msg.text))
+@bot.message_handler(content_types=['text', 'photo'])
 def handle_message(message):
     chat_id = message.chat.id
-    user_text = message.text
     state = load_state_cloud()
 
     try:
         bot.send_chat_action(chat_id, "typing")
-        reply = generate_reply(user_text, state)
+        
+        image_part = None
+        user_text = ""
+
+        # 🚀 LOGIKA PENGUNDUHAN GAMBAR DARI TELEGRAM
+        if message.photo:
+            # Mengambil resolusi tertinggi (paling terakhir di daftar)
+            file_id = message.photo[-1].file_id
+            file_info = bot.get_file(file_id)
+            downloaded_file = bot.download_file(file_info.file_path)
+            
+            # Membuka gambar di memori dan menyiapkannya untuk Gemini
+            image_part = Image.open(io.BytesIO(downloaded_file))
+            
+            # Jika mengirim gambar pakai caption, ambil teksnya. Jika kosong, beri tanda.
+            user_text = message.caption if message.caption else "[Ridho mengirim sebuah foto/gambar tanpa teks]"
+        else:
+            user_text = message.text
+
+        reply = generate_reply(user_text, state, image_part=image_part)
         
         state["mood"] = min(100, state.get("mood", 80) + 2)
-        state["chat_id"] = chat_id # 🚀 SIMPAN CHAT ID ANDA SAAT CHAT
+        state["chat_id"] = chat_id
 
         history = state.get("riwayat_ldr", [])
         history.extend([f"Ridho: {user_text}", f"Reina: {reply}"])
